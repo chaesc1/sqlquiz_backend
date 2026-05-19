@@ -1,4 +1,4 @@
-package sqlquiz.domain.user.entity;
+package sqlquiz.domain.question.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
