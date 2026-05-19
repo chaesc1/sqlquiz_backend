@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: sqlquiz-postgres
+    environment:
+      POSTGRES_DB: sqlquiz
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: sqlquiz-redis
+    ports:
+      - "6379:6379"
+
+volumes:
+  postgres-data:
