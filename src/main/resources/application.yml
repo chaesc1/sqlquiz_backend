@@ -2,14 +2,6 @@ spring:
   profiles:
     active: local
 
-  jpa:
-    hibernate:
-      ddl-auto: validate        # Flyway가 스키마 관리하므로 validate
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: true
-
   flyway:
     enabled: true
     locations: classpath:db/migration
