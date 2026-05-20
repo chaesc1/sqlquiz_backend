@@ -25,5 +25,10 @@ spring:
 
 logging:
   level:
-    com.example.sqlquiz: debug
+    sqlquiz: debug
     org.hibernate.SQL: debug
+
+jwt:
+  secret: local-dev-secret-key-minimum-256-bits-long-change-in-prod
+  access-expiration: 900000      # 15분 (밀리초)
+  refresh-expiration: 604800000  # 7일 (밀리초)
