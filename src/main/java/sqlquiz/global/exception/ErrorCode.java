@@ -25,6 +25,8 @@ public enum ErrorCode {
 
     // 문제
     QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "문제를 찾을 수 없습니다."),
+    CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, "카테고리를 찾을 수 없습니다."),
+    INVALID_ANSWER(HttpStatus.BAD_REQUEST, "정답은 1~4 사이여야 합니다."),
 
     // 시험
     EXAM_NOT_FOUND(HttpStatus.NOT_FOUND, "시험 세션을 찾을 수 없습니다."),
