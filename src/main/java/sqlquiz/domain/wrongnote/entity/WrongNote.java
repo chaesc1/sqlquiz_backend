@@ -23,7 +23,7 @@ public class WrongNote extends BaseEntity {
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "question", nullable = false)
+    @JoinColumn(name = "question_id", nullable = false)
     private Question question;
 
     @Column(columnDefinition = "TEXT")

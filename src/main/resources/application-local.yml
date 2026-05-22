@@ -1,34 +1,52 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:sqlquiz;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
-
-  h2:
-    console:
-      enabled: true          # http://localhost:8080/h2-console 접속 가능
-      path: /h2-console
+    url: jdbc:postgresql://localhost:5432/sqlquiz
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USERNAME:sqlquiz}
+    password: ${DB_PASSWORD:sqlquiz}
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
-      ddl-auto: create-drop  # 로컬에서는 앱 시작/종료 시 자동 생성/삭제
+      ddl-auto: validate          # Flyway가 스키마를 관리하므로 검증만 수행
+    properties:
+      hibernate:
+        format_sql: true
+        default_batch_fetch_size: 100
+    open-in-view: false           # OSIV off (서비스 계층 외부 LAZY 로딩 방지)
 
   flyway:
-    enabled: false           # 로컬 H2에서는 Flyway 비활성화
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
 
   data:
     redis:
       host: localhost
       port: 6379
+      # password: ${REDIS_PASSWORD:}  # 운영 시 활성화
 
+server:
+  port: 8080
+
+# JWT
+jwt:
+  secret: ${JWT_SECRET:local-dev-secret-key-minimum-256-bits-long-change-in-prod-xxxxxxxx}
+  access-expiration: 900000        # 15분
+  refresh-expiration: 604800000    # 7일
+
+# Springdoc (Swagger UI)
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html         # 접근: /swagger-ui/index.html 로도 진입 가능
+    tags-sorter: alpha
+    operations-sorter: alpha
+
+# Logging
 logging:
   level:
     sqlquiz: debug
     org.hibernate.SQL: debug
-
-jwt:
-  secret: local-dev-secret-key-minimum-256-bits-long-change-in-prod
-  access-expiration: 900000      # 15분 (밀리초)
-  refresh-expiration: 604800000  # 7일 (밀리초)
+    org.hibernate.orm.jdbc.bind: trace   # 바인딩 파라미터 출력 (운영에서는 끄기)
