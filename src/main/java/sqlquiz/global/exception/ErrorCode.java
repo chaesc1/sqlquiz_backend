@@ -32,6 +32,9 @@ public enum ErrorCode {
     EXAM_NOT_FOUND(HttpStatus.NOT_FOUND, "시험 세션을 찾을 수 없습니다."),
     EXAM_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "이미 완료된 시험입니다."),
     EXAM_ACCESS_DENIED(HttpStatus.FORBIDDEN, "본인의 시험 세션만 접근할 수 있습니다."),
+    EXAM_NOT_COMPLETED(HttpStatus.BAD_REQUEST, "아직 완료되지 않은 시험입니다."),
+    NOT_ENOUGH_QUESTIONS(HttpStatus.BAD_REQUEST, "조건에 맞는 문제가 부족합니다."),
+    INVALID_QUESTION_FOR_EXAM(HttpStatus.BAD_REQUEST, "이 시험에 포함되지 않은 문제가 제출되었습니다."),
 
     // 오답노트
     WRONG_NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "오답노트를 찾을 수 없습니다."),
