@@ -14,6 +14,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import sqlquiz.global.filter.JwtAuthenticationFilter;
+import sqlquiz.global.filter.LoginRateLimitFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -22,6 +23,7 @@ import sqlquiz.global.filter.JwtAuthenticationFilter;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final LoginRateLimitFilter loginRateLimitFilter;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -56,8 +58,9 @@ public class SecurityConfig {
                 .headers(headers ->
                         headers.frameOptions(frame -> frame.sameOrigin()))
 
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                // Rate limit 은 인증 체크보다 먼저 → 차단된 요청에 JWT 파싱 비용 안 들임
+                .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
