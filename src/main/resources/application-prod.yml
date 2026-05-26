@@ -3,13 +3,70 @@ spring:
     url: ${DB_URL}
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:20}
+      minimum-idle: 5
+      connection-timeout: 30000
+
   jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate          # 운영도 Flyway 가 스키마 관리. JPA 는 검증만.
+    properties:
+      hibernate:
+        format_sql: false
+        default_batch_fetch_size: 100
+    open-in-view: false
     show-sql: false
 
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    out-of-order: false           # 운영은 엄격한 순차 적용
+
+  data:
+    redis:
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+
+# 운영용 P6Spy 는 비활성화 — 쿼리 본문 로깅은 사고 대응 시에만 잠시 켜는 게 정석
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: false
+
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful              # SIGTERM 시 진행 중 요청 처리 후 종료
+  forward-headers-strategy: framework
+
+# JWT — 운영에서는 시크릿을 반드시 환경변수로 주입 (기본값 없음)
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: ${JWT_ACCESS_EXPIRATION:900000}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}
+
+# 운영에서는 Swagger UI / API Docs 비공개. 필요 시 reverse proxy 에서 IP 화이트리스트로 제한.
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when-authorized
 
 logging:
   level:
     root: WARN
     sqlquiz: INFO
+    org.hibernate.SQL: WARN
