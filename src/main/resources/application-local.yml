@@ -26,6 +26,17 @@ spring:
       port: 6379
       # password: ${REDIS_PASSWORD:}  # 운영 시 활성화
 
+# P6Spy 쿼리 로깅 — datasource-decorator 자동 구성.
+#   logging=slf4j  → 우리 logback 파이프라인을 그대로 사용
+#   multiline=false→ 한 줄로 압축 (운영용 가독성). 대신 format 으로 SQL 만 추출
+decorator:
+  datasource:
+    p6spy:
+      enable-logging: true
+      logging: slf4j
+      multiline: false
+      log-format: "[p6spy] %(executionTime)ms | %(category) | %(sqlSingleLine)"
+
 server:
   port: 8080
 

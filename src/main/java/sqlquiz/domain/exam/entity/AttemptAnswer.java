@@ -33,4 +33,14 @@ public class AttemptAnswer {
 
     @Builder.Default
     private LocalDateTime answeredAt = LocalDateTime.now();
+
+    /**
+     * 시험 제출 시점에 답안 갱신.
+     * selectedOption 이 null 이면 미선택(자동 오답) 처리.
+     */
+    public void updateSubmission(Integer selectedOption, boolean isCorrect) {
+        this.selectedOption = selectedOption;
+        this.isCorrect = isCorrect;
+        this.answeredAt = LocalDateTime.now();
+    }
 }

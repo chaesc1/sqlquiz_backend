@@ -1,5 +1,6 @@
 package sqlquiz.global.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
@@ -33,6 +34,17 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getStatus())
                 .body(new ErrorResponse(errorCode));
+    }
+
+    // @Validated 와 메서드 파라미터(@Min/@Max/@RequestParam) 검증 실패 → 400.
+    // @RequestBody + @Valid 는 MethodArgumentNotValidException, @RequestParam + @Min 등은
+    // ConstraintViolationException 으로 다른 타입이 던져진다 — 별도 핸들러 필요.
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException e) {
+        log.warn("[ConstraintViolationException] {}", e.getMessage());
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT.getStatus())
+                .body(new ErrorResponse(ErrorCode.INVALID_INPUT));
     }
 
     // Spring Security 권한 부족 (@PreAuthorize 거절 등) → 403
