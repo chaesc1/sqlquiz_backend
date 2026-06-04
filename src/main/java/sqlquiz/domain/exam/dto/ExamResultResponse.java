@@ -25,6 +25,9 @@ public record ExamResultResponse(
         LocalDateTime completedAt,
 
         @Schema(description = "카테고리별 정답 통계")
-        List<CategoryScore> categoryStats
+        List<CategoryScore> categoryStats,
+
+        @Schema(description = "문항별 채점 결과 (정답·선택·해설 포함)")
+        List<QuestionResult> questionResults
 ) {
 }

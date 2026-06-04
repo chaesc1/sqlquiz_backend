@@ -156,21 +156,26 @@ public class ExamService {
     }
 
     /**
-     * 오답에 대해 WrongNote 자동 등록. 이미 등록된 문제는 건너뜀.
-     * "오답"의 정의는 isCorrect=false — 미선택(selectedOption=null)도 포함.
+     * 오답에 대해 WrongNote 자동 등록.
+     * - 이미 동일 (user, question) 노트가 있으면 selectedOption 을 최신값으로 덮어쓰기 (재응시 반영).
+     * - 없으면 신규 생성.
+     * "오답" 정의는 isCorrect=false — 미선택(selectedOption=null)도 포함한다.
      */
     private void autoCreateWrongNotes(User user, List<AttemptAnswer> answers) {
         for (AttemptAnswer a : answers) {
             if (Boolean.TRUE.equals(a.getIsCorrect())) continue;
 
             Long qId = a.getQuestion().getId();
-            if (wrongNoteRepository.existsByUserIdAndQuestionId(user.getId(), qId)) continue;
-
-            wrongNoteRepository.save(WrongNote.builder()
-                    .user(user)
-                    .question(a.getQuestion())
-                    .isResolved(false)
-                    .build());
+            wrongNoteRepository.findByUserIdAndQuestionId(user.getId(), qId)
+                    .ifPresentOrElse(
+                            existing -> existing.updateSelectedOption(a.getSelectedOption()),
+                            () -> wrongNoteRepository.save(WrongNote.builder()
+                                    .user(user)
+                                    .question(a.getQuestion())
+                                    .selectedOption(a.getSelectedOption())
+                                    .isResolved(false)
+                                    .build())
+                    );
         }
     }
 
@@ -198,6 +203,10 @@ public class ExamService {
                 .map(e -> new CategoryScore(e.getKey(), e.getValue()[0], e.getValue()[1]))
                 .toList();
 
+        List<QuestionResult> questionResults = answers.stream()
+                .map(QuestionResult::from)
+                .toList();
+
         return new ExamResultResponse(
                 attempt.getId(),
                 attempt.getExamType(),
@@ -205,7 +214,8 @@ public class ExamService {
                 attempt.getTotalCount(),
                 attempt.getScore(),
                 attempt.getCompletedAt(),
-                categoryStats
+                categoryStats,
+                questionResults
         );
     }
 }
