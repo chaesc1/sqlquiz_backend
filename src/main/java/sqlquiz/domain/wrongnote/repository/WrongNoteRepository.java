@@ -16,8 +16,14 @@ public interface WrongNoteRepository extends JpaRepository<WrongNote, Long> {
 
     List<WrongNote> findByUserId(UUID userId);
 
-    /** ExamService 의 자동 등록 흐름에서 중복 방지에 사용. */
+    /** 수동 등록(WrongNoteService.create) 의 사전 중복 검증에 사용. */
     boolean existsByUserIdAndQuestionId(UUID userId, Long questionId);
+
+    /**
+     * 자동 등록 흐름에서 "있으면 갱신, 없으면 신규" 분기에 사용.
+     * 시험 재응시 시 selected_option 을 최신 선택값으로 덮어쓰기 위해 단건 페치.
+     */
+    Optional<WrongNote> findByUserIdAndQuestionId(UUID userId, Long questionId);
 
     /**
      * 본인 노트 검색 — categoryId / isResolved 부분 필터 + 페이지네이션.

@@ -42,6 +42,9 @@ public record WrongNoteResponse(
         @Schema(description = "해결 여부")
         Boolean isResolved,
 
+        @Schema(description = "사용자가 선택했던 답 (미선택이면 null)")
+        Integer selectedOption,
+
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -61,6 +64,7 @@ public record WrongNoteResponse(
                 c.getExamType(),
                 w.getMemo(),
                 w.getIsResolved(),
+                w.getSelectedOption(),
                 w.getCreatedAt(),
                 w.getUpdatedAt()
         );

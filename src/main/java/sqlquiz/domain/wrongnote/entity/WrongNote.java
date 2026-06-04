@@ -32,12 +32,18 @@ public class WrongNote extends BaseEntity {
     @Builder.Default
     private Boolean isResolved = false;
 
+    private Integer selectedOption;
+
     public void updateMemo(String memo) {
         this.memo = memo;
     }
 
     public void resolve() {
         this.isResolved = true;
+    }
+
+    public void updateSelectedOption(Integer selectedOption) {
+        this.selectedOption = selectedOption;
     }
 
 }
