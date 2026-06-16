@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 import sqlquiz.domain.wrongnote.dto.WrongNoteCreateRequest;
 import sqlquiz.domain.wrongnote.dto.WrongNoteMemoUpdateRequest;
 import sqlquiz.domain.wrongnote.dto.WrongNoteResponse;
+import sqlquiz.domain.wrongnote.dto.WrongNoteRetryRequest;
+import sqlquiz.domain.wrongnote.dto.WrongNoteRetryResponse;
 import sqlquiz.domain.wrongnote.service.WrongNoteService;
 import sqlquiz.global.exception.CustomException;
 import sqlquiz.global.exception.ErrorCode;
@@ -86,6 +88,20 @@ public class WrongNoteController {
     ) {
         wrongNoteService.resolve(currentEmail(authentication), id);
         return ResponseEntity.ok(ApiResponse.ok("해결로 표시되었습니다.", null));
+    }
+
+    @Operation(summary = "오답노트 다시 풀기",
+            description = "정답/해설 비공개 상태에서 한 번 더 풀고 결과를 받는다. 정답이면 자동으로 isResolved=true.",
+            security = @SecurityRequirement(name = "BearerAuth"))
+    @PostMapping("/{id}/retry")
+    public ResponseEntity<ApiResponse<WrongNoteRetryResponse>> retry(
+            @PathVariable Long id,
+            @Valid @RequestBody WrongNoteRetryRequest request,
+            Authentication authentication
+    ) {
+        WrongNoteRetryResponse result = wrongNoteService.retry(currentEmail(authentication), id, request);
+        String msg = Boolean.TRUE.equals(result.isCorrect()) ? "정답입니다." : "오답입니다.";
+        return ResponseEntity.ok(ApiResponse.ok(msg, result));
     }
 
     @Operation(summary = "오답노트 삭제",

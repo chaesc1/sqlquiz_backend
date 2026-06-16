@@ -16,8 +16,10 @@ import sqlquiz.domain.exam.dto.AnswerSubmission;
 import sqlquiz.domain.exam.dto.ExamResultResponse;
 import sqlquiz.domain.exam.dto.ExamStartRequest;
 import sqlquiz.domain.exam.dto.ExamSubmitRequest;
+import sqlquiz.domain.exam.dto.QuestionResult;
 import sqlquiz.domain.exam.entity.Attempt;
 import sqlquiz.domain.exam.entity.AttemptAnswer;
+import sqlquiz.domain.wrongnote.entity.WrongNote;
 import sqlquiz.domain.exam.repository.AttemptAnswerRepository;
 import sqlquiz.domain.exam.repository.AttemptRepository;
 import sqlquiz.domain.question.entity.Category;
@@ -61,8 +63,7 @@ class ExamServiceTest {
                 .id(UUID.randomUUID())
                 .email(EMAIL)
                 .password("hash")
-                .nickname("u")
-                .role(Role.ROLE_USER)
+                .nickname("u")\
                 .build();
         category = Category.builder().id(1L).name("SQL 기본").examType(ExamType.SQLD).build();
     }
@@ -151,8 +152,9 @@ class ExamServiceTest {
             assertThat(result.totalCount()).isEqualTo(4);
             assertThat(result.score()).isEqualTo(75);   // 3/4 * 100
             assertThat(attempt.getStatus()).isEqualTo(AttemptStatus.COMPLETED);
-            // 오답 1문제에 대해서만 WrongNote 시도 — 중복 체크 후 save
-            verify(wrongNoteRepository, times(1)).existsByUserIdAndQuestionId(user.getId(), 4L);
+            // 오답 1문제(q4)에 대해서만 WrongNote 분기 — 기존 노트 조회 1회.
+            verify(wrongNoteRepository, times(1)).findByUserIdAndQuestionId(user.getId(), 4L);
+            verify(wrongNoteRepository, never()).findByUserIdAndQuestionId(eq(user.getId()), eq(1L));
         }
 
         @Test
@@ -184,20 +186,95 @@ class ExamServiceTest {
         }
 
         @Test
-        @DisplayName("이미 오답노트에 있는 문제는 중복 등록하지 않는다")
-        void submit_skips_duplicate_wrong_notes() {
+        @DisplayName("이미 오답노트에 있는 문제는 selected_option 만 최신 선택으로 갱신")
+        void submit_updates_existing_wrong_note_selected_option() {
             Attempt attempt = attemptFixture(AttemptStatus.IN_PROGRESS, 1);
             Question q = questionFixture(1L, 2);
             List<AttemptAnswer> answers = new ArrayList<>(List.of(answerFixture(attempt, q)));
+            WrongNote existing = WrongNote.builder()
+                    .id(99L).user(user).question(q).selectedOption(3).isResolved(false).build();
             when(attemptRepository.findByIdWithUser(attempt.getId())).thenReturn(Optional.of(attempt));
             when(attemptAnswerRepository.findByAttemptIdWithQuestion(attempt.getId())).thenReturn(answers);
-            // 이미 오답노트가 존재한다고 stub
-            when(wrongNoteRepository.existsByUserIdAndQuestionId(user.getId(), 1L)).thenReturn(true);
+            when(wrongNoteRepository.findByUserIdAndQuestionId(user.getId(), 1L))
+                    .thenReturn(Optional.of(existing));
 
             examService.submit(EMAIL, attempt.getId(),
                     new ExamSubmitRequest(List.of(new AnswerSubmission(1L, 1))));   // 오답 (정답 2)
 
+            assertThat(existing.getSelectedOption()).isEqualTo(1);   // 3 → 1 로 덮어쓰기
             verify(wrongNoteRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("채점 결과에 문항별 questionResults 가 포함된다")
+        void submit_returns_question_results() {
+            Attempt attempt = attemptFixture(AttemptStatus.IN_PROGRESS, 2);
+            Question q1 = questionFixture(1L, 1);   // 정답 1
+            Question q2 = questionFixture(2L, 2);   // 정답 2
+            List<AttemptAnswer> answers = new ArrayList<>(List.of(
+                    answerFixture(attempt, q1),
+                    answerFixture(attempt, q2)
+            ));
+            when(attemptRepository.findByIdWithUser(attempt.getId())).thenReturn(Optional.of(attempt));
+            when(attemptAnswerRepository.findByAttemptIdWithQuestion(attempt.getId())).thenReturn(answers);
+
+            ExamResultResponse result = examService.submit(EMAIL, attempt.getId(),
+                    new ExamSubmitRequest(List.of(
+                            new AnswerSubmission(1L, 1),   // 정답
+                            new AnswerSubmission(2L, 4)    // 오답
+                    )));
+
+            assertThat(result.questionResults()).hasSize(2);
+            QuestionResult r1 = result.questionResults().get(0);
+            assertThat(r1.questionId()).isEqualTo(1L);
+            assertThat(r1.selectedOption()).isEqualTo(1);
+            assertThat(r1.correctAnswer()).isEqualTo(1);
+            assertThat(r1.isCorrect()).isTrue();
+            QuestionResult r2 = result.questionResults().get(1);
+            assertThat(r2.questionId()).isEqualTo(2L);
+            assertThat(r2.selectedOption()).isEqualTo(4);
+            assertThat(r2.correctAnswer()).isEqualTo(2);
+            assertThat(r2.isCorrect()).isFalse();
+        }
+
+        @Test
+        @DisplayName("신규 오답은 selected_option 을 담아 저장한다")
+        void submit_new_wrong_note_persists_selected_option() {
+            Attempt attempt = attemptFixture(AttemptStatus.IN_PROGRESS, 1);
+            Question q = questionFixture(7L, 2);   // 정답 2
+            List<AttemptAnswer> answers = new ArrayList<>(List.of(answerFixture(attempt, q)));
+            when(attemptRepository.findByIdWithUser(attempt.getId())).thenReturn(Optional.of(attempt));
+            when(attemptAnswerRepository.findByAttemptIdWithQuestion(attempt.getId())).thenReturn(answers);
+            when(wrongNoteRepository.findByUserIdAndQuestionId(user.getId(), 7L))
+                    .thenReturn(Optional.empty());
+
+            examService.submit(EMAIL, attempt.getId(),
+                    new ExamSubmitRequest(List.of(new AnswerSubmission(7L, 3))));   // 오답 (3 선택)
+
+            verify(wrongNoteRepository).save(argThat(w ->
+                    w.getQuestion() == q
+                            && w.getUser() == user
+                            && w.getSelectedOption() != null && w.getSelectedOption() == 3
+                            && Boolean.FALSE.equals(w.getIsResolved())));
+        }
+
+        @Test
+        @DisplayName("미선택(selectedOption=null) 문제도 오답노트에 등록된다")
+        void submit_creates_wrong_note_for_unanswered_question() {
+            Attempt attempt = attemptFixture(AttemptStatus.IN_PROGRESS, 1);
+            Question q = questionFixture(8L, 4);
+            List<AttemptAnswer> answers = new ArrayList<>(List.of(answerFixture(attempt, q)));
+            when(attemptRepository.findByIdWithUser(attempt.getId())).thenReturn(Optional.of(attempt));
+            when(attemptAnswerRepository.findByAttemptIdWithQuestion(attempt.getId())).thenReturn(answers);
+            when(wrongNoteRepository.findByUserIdAndQuestionId(user.getId(), 8L))
+                    .thenReturn(Optional.empty());
+
+            // 미선택: selectedOption = null
+            examService.submit(EMAIL, attempt.getId(),
+                    new ExamSubmitRequest(List.of(new AnswerSubmission(8L, null))));
+
+            verify(wrongNoteRepository).save(argThat(w ->
+                    w.getQuestion() == q && w.getSelectedOption() == null));
         }
     }
 

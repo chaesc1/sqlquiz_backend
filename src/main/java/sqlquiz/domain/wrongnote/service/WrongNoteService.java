@@ -13,6 +13,8 @@ import sqlquiz.domain.user.repository.UserRepository;
 import sqlquiz.domain.wrongnote.dto.WrongNoteCreateRequest;
 import sqlquiz.domain.wrongnote.dto.WrongNoteMemoUpdateRequest;
 import sqlquiz.domain.wrongnote.dto.WrongNoteResponse;
+import sqlquiz.domain.wrongnote.dto.WrongNoteRetryRequest;
+import sqlquiz.domain.wrongnote.dto.WrongNoteRetryResponse;
 import sqlquiz.domain.wrongnote.entity.WrongNote;
 import sqlquiz.domain.wrongnote.repository.WrongNoteRepository;
 import sqlquiz.global.exception.CustomException;
@@ -80,6 +82,34 @@ public class WrongNoteService {
         WrongNote note = loadAndCheckOwnership(id, email);
         note.resolve();
         log.info("[WrongNote] 해결 처리: id={}", id);
+    }
+
+    /**
+     * 다시 풀기 — 오답노트 카드에서 정답/해설을 가린 채 한 번 더 풀어볼 때 호출.
+     * - 정답이면 isResolved=true 자동 전환 + selected_option 도 정답 값으로 갱신 (복기 상태 일관성).
+     * - 오답이면 selected_option 만 새 선택값으로 덮어쓰기.
+     * 응답에는 정답·해설을 포함해 화면에서 즉시 노출.
+     */
+    @Transactional
+    public WrongNoteRetryResponse retry(String email, Long id, WrongNoteRetryRequest request) {
+        WrongNote note = loadAndCheckOwnership(id, email);
+        Question question = note.getQuestion();
+        Integer selected = request.selectedOption();
+        boolean correct = selected.equals(question.getAnswer());
+
+        note.updateSelectedOption(selected);
+        if (correct) {
+            note.resolve();
+        }
+
+        log.info("[WrongNote] 다시 풀기: id={}, selected={}, correct={}", id, selected, correct);
+        return new WrongNoteRetryResponse(
+                correct,
+                question.getAnswer(),
+                question.getExplanation(),
+                note.getIsResolved(),
+                selected
+        );
     }
 
     /** 삭제. */
